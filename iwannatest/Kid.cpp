@@ -5,17 +5,17 @@
 #include "EntityManager.h"
 #pragma comment(lib, "gdiplus")
 
-Point Kid::getCenterPosition() {
+YX Kid::getCenterPosition() {
 	return { y + 20.0f, x + 16.0f };
 }
 
-Point Kid::getDisplayPosition() {
+YX Kid::getDisplayPosition() {
 	return { getCenterPosition().y + 2.0f, getCenterPosition().x };
 }
 
 bool Kid::isCollideWithBlock(float dx, float dy) {
 
-	Point pos = getCenterPosition();
+	YX pos = getCenterPosition();
 	
 	for (int yi = -10; yi <= 10; yi++) {
 		for (int xi = -5; xi <= 5; xi++) {
@@ -31,7 +31,7 @@ bool Kid::isCollideWithBlock(float dx, float dy) {
 
 bool Kid::isCollideWithKiller() {
 
-	Point pos = getCenterPosition();
+	YX pos = getCenterPosition();
 
 	// 화면 밖을 넘어감
 	if (pos.y <= 16.0f || pos.x <= 16.0f || pos.y >= 624.0f || pos.x >= 816.0f) {

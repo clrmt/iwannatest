@@ -1,5 +1,5 @@
 #pragma once
-class Point {
+class YX {
 public:
 	float y;
 	float x;

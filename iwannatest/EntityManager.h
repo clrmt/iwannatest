@@ -7,6 +7,7 @@
 #include <gdiplus.h>
 #include <Windows.h>
 #pragma comment(lib, "gdiplus")
+using namespace Gdiplus;
 
 class EntityManager {
 public:
@@ -16,19 +17,11 @@ public:
 	static char blockPixel[(1 + 19 + 1) * 32][(1 + 25 + 1) * 32];
 	static char killerPixel[(1 + 19 + 1) * 32][(1 + 25 + 1) * 32];
 
-	HDC blockDC;
-	HBITMAP blockBitmap;
-	HBITMAP blockBitmapOld;
-	Gdiplus::Graphics *blockGraphics;
-	HDC killerDC;
-	HBITMAP killerBitmap;
-	HBITMAP killerBitmapOld;
-	Gdiplus::Graphics *killerGraphics;
-	RECT windowRect;
-	Gdiplus::Graphics *graphics;
-	Gdiplus::SolidBrush *backgroundBrush;
-
-	void init(HDC hdc, RECT &rect, int cx, int cy);
+	Graphics *graphics;
+	CachedBitmap *cachedBitmap;
+	SolidBrush *backgroundBrush;
+	
+	void init(Graphics *graphics_, CachedBitmap *cachedBitmap_);
 	void setPreference(Gdiplus::Color &backgroundColor);
 	void destroy();
 	void destroyPreference();

@@ -6,64 +6,37 @@
 #include <ObjIdl.h>
 #include <gdiplus.h>
 #pragma comment(lib, "gdiplus")
+using namespace Gdiplus;
 
 char EntityManager::blockPixel[(1 + 19 + 1) * 32][(1 + 25 + 1) * 32];
 char EntityManager::killerPixel[(1 + 19 + 1) * 32][(1 + 25 + 1) * 32];
 
-void EntityManager::init(HDC hdc, RECT& rect, int cx, int cy) {
+EntityManager::EntityManager() {
+	graphics = NULL;
+	cachedBitmap = NULL;
+	backgroundBrush = NULL;
+}
+EntityManager::~EntityManager() {
 	destroy();
-	graphics = new Gdiplus::Graphics(hdc);
-	blockDC = CreateCompatibleDC(NULL);
-	killerDC = CreateCompatibleDC(NULL);
-	blockBitmap = CreateCompatibleBitmap(hdc, cx, cy);
-	killerBitmap = CreateCompatibleBitmap(hdc, cx, cy);
-	blockBitmapOld = (HBITMAP)SelectObject(blockDC, blockBitmap);
-	killerBitmapOld = (HBITMAP)SelectObject(killerDC, killerBitmap);
-	windowRect = rect;
+	destroyPreference();
+}
+void EntityManager::init(Graphics *graphics_, CachedBitmap *cachedBitmap_) {
+	destroy();
+	graphics = graphics_;
+	cachedBitmap = cachedBitmap_;
+}
+void EntityManager::destroy() {
+
 }
 // 환경 설정
 void EntityManager::setPreference(Gdiplus::Color &backgroundColor){
-	if(backgroundBrush != NULL){
-		delete backgroundBrush;
-	}
+	destroyPreference();
 	backgroundBrush = new Gdiplus::SolidBrush(backgroundColor);
-}
-EntityManager::EntityManager() {
-	blockDC = NULL;
-	killerDC = NULL;
-	blockBitmap = NULL;
-	killerBitmap = NULL;
-	blockBitmapOld = NULL;
-	killerBitmapOld = NULL;
-	windowRect.left = 0;
-	windowRect.right = 0;
-	windowRect.top = 0;
-	windowRect.bottom = 0;
-	graphics = NULL;
-	backgroundBrush = NULL;
-}
-void EntityManager::destroy() {
-	if (blockDC != NULL) {
-		SelectObject(blockDC, blockBitmapOld);
-		DeleteDC(blockDC);
-		DeleteObject(blockBitmap);
-
-		SelectObject(killerDC, killerBitmapOld);
-		DeleteDC(killerDC);
-		DeleteObject(killerBitmap);
-
-		blockDC = NULL;
-		delete graphics;
-	}
 }
 void EntityManager::destroyPreference() {
 	if (backgroundBrush != NULL) {
 		delete backgroundBrush;
 	}
-}
-EntityManager::~EntityManager() {
-	destroy();
-	destroyPreference();
 }
 void EntityManager::enterFrame(InputData& inputData) {
 
@@ -79,8 +52,11 @@ void EntityManager::enterFrame(InputData& inputData) {
 
 void EntityManager::draw() {
 	
+	extern Gdiplus::SolidBrush *blackBrush;
+	extern Gdiplus::SolidBrush *whiteBrush;
+	extern Rect mainWindowRect;
 	// 배경
-	graphics->FillRectangle(backgroundBrush, (INT)windowRect.left, (INT)windowRect.top, (INT)windowRect.right - (INT)windowRect.left, (INT)windowRect.bottom - (INT)windowRect.top);
+	graphics->FillRectangle(backgroundBrush, mainWindowRect.GetLeft(), mainWindowRect.GetTop(), mainWindowRect.GetRight() - mainWindowRect.GetLeft(), mainWindowRect.GetBottom() - mainWindowRect.GetTop());
 	
 	for (auto& c : block) {
 		graphics->DrawImage(Block::image,

@@ -42,7 +42,7 @@
     <ClInclude Include="Block.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
-    <ClInclude Include="Point.h">
+    <ClInclude Include="YX.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
     <ClInclude Include="Killer.h">
@@ -68,7 +68,7 @@
     <ClCompile Include="Block.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
-    <ClCompile Include="Point.cpp">
+    <ClCompile Include="YX.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
     <ClCompile Include="Killer.cpp">

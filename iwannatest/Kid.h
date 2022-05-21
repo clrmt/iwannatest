@@ -3,7 +3,7 @@
 #include "InputData.h"
 #include <ObjIdl.h>
 #include <gdiplus.h>
-#include "Point.h"
+#include "YX.h"
 #pragma comment(lib, "gdiplus")
 
 class Kid : public Entity {
@@ -19,8 +19,8 @@ public:
 	void enterFrame(InputData &inputData);
 	bool isCollideWithBlock(float dx, float dy);
 	bool isCollideWithKiller();
-	Point getCenterPosition();
-	Point getDisplayPosition();
+	YX getCenterPosition();
+	YX getDisplayPosition();
 	
 	static Gdiplus::Image* image;
 	static Gdiplus::Image* imageLeft;

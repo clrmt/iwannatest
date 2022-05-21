@@ -1,5 +1,6 @@
-﻿//#define CONSOLE
+﻿#define CONSOLE
 
+#pragma warning(disable:4996)
 #include <iostream>
 #include <clocale>
 #include "framework.h"
@@ -8,6 +9,7 @@
 #include "EntityManager.h"
 #include <vector>
 typedef long long ll;
+using namespace Gdiplus;
 
 #define MAX_LOADSTRING 100
 
@@ -15,15 +17,17 @@ typedef long long ll;
 HINSTANCE hInst;
 WCHAR szTitle[MAX_LOADSTRING];
 WCHAR szWindowClass[MAX_LOADSTRING];
-Gdiplus::GdiplusStartupInput gdiInput;
+GdiplusStartupInput gdiInput;
 ULONG_PTR gdiplusToken;
 
 HWND mainWindow;
-HDC mainWindowDC;
-RECT mainWindowRect;
-HDC mainWindowInnerDC;
-HBITMAP mainWindowInnerBitmapOld;
-HBITMAP mainWindowInnerBitmap;
+Rect mainWindowRect;
+Graphics* mainWindowGraphics;
+
+Bitmap* mainWindowInnerBitmap;
+Graphics* mainWindowInnerGraphics;
+CachedBitmap* mainWindowCachedBitmap;
+
 constexpr int mainWindowWidth = 32 * 25;
 constexpr int mainWindowHeight = 32 * 19;
 
@@ -35,12 +39,17 @@ int fps = 50;
 int frameInterval = 1000 / fps;
 unsigned long long readySecond = 5;
 
-
+Gdiplus::SolidBrush* whiteBrush;
+Gdiplus::SolidBrush* blackBrush;
 
 void enterFrame();
 void drawFrame();
 void allocateObject();
 void destroyObject();
+
+Rect toRect(RECT& rect) {
+	return Rect(rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top);
+}
 
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
@@ -100,7 +109,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 		} else {
 			// 시간이 너무 많이 남은 경우 나중에 다시 확인해봄
 			MsgWaitForMultipleObjects(0, NULL, FALSE, (DWORD)waitTime - (DWORD)readySecond, QS_ALLEVENTS);
-			drawFrame();
+			//drawFrame();
 		}
 
 	}
@@ -135,34 +144,6 @@ ATOM MyRegisterClass(HINSTANCE hInstance) {
 
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
 
-	mainWindow = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
-		CW_USEDEFAULT, CW_USEDEFAULT, mainWindowWidth, mainWindowHeight, nullptr, nullptr, hInstance, nullptr);
-
-	hInst = hInstance;
-
-	if (!mainWindow) {
-		return FALSE;
-	}
-
-	// 기존 가장자리 포함 800x608에서, 가장자리 제외하고 800x608로 바꿈
-	GetClientRect(mainWindow, &mainWindowRect);
-	int borderWidth = mainWindowWidth - mainWindowRect.right + mainWindowRect.left;
-	int borderHeight = mainWindowHeight - mainWindowRect.bottom + mainWindowRect.top;
-	SetWindowPos(mainWindow, NULL, 0, 0, mainWindowWidth + borderWidth, mainWindowHeight + borderHeight, SWP_NOZORDER | SWP_NOMOVE);
-	GetClientRect(mainWindow, &mainWindowRect); // 바뀐 이후 다시
-
-	allocateObject();
-
-	entities.init(mainWindowInnerDC, mainWindowRect, mainWindowRect.right, mainWindowRect.bottom);
-	Gdiplus::Color backgroundColor(255, 255, 255, 255);
-	entities.setPreference(backgroundColor);
-
-	// 프레임 시간 초기화
-	nextFrameTime = GetTickCount64() + frameInterval;
-	
-	ShowWindow(mainWindow, nCmdShow); // 보이게
-	UpdateWindow(mainWindow); // 강제 WM_PAINT 실행
-
 	// 디버깅용ㅇㅇ요용ㅇ 콘솔
 #ifdef CONSOLE
 	AllocConsole();
@@ -171,6 +152,36 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
 	_tfreopen(_T("CONERR$"), _T("w"), stderr);
 	_tsetlocale(LC_ALL, _T(""));
 #endif
+
+	mainWindow = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
+		CW_USEDEFAULT, CW_USEDEFAULT, mainWindowWidth, mainWindowHeight, nullptr, nullptr, hInstance, nullptr);
+	
+	hInst = hInstance;
+
+	if (!mainWindow) {
+		return FALSE;
+	}
+
+	// 기존 가장자리 포함 800x608에서, 가장자리 제외하고 800x608로 바꿈
+	RECT oldRect;
+	GetClientRect(mainWindow, &oldRect);
+	int borderWidth = mainWindowWidth - oldRect.right + oldRect.left;
+	int borderHeight = mainWindowHeight - oldRect.bottom + oldRect.top;
+	SetWindowPos(mainWindow, NULL, 0, 0, mainWindowWidth + borderWidth, mainWindowHeight + borderHeight, SWP_NOZORDER | SWP_NOMOVE);
+	GetClientRect(mainWindow, &oldRect); // 바뀐 이후 다시
+	mainWindowRect = toRect(oldRect);
+
+	allocateObject();
+
+	entities.init(mainWindowInnerGraphics, mainWindowCachedBitmap);
+	Color backgroundColor(255, 255, 255, 255);
+	entities.setPreference(backgroundColor);
+
+	// 프레임 시간 초기화
+	nextFrameTime = GetTickCount64() + frameInterval;
+	
+	ShowWindow(mainWindow, nCmdShow); // 보이게
+	UpdateWindow(mainWindow); // 강제 WM_PAINT 실행
 
 	// 레벨 초기화
 	entities.createBlock(0.f, 0.f);
@@ -194,19 +205,24 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
 void allocateObject() {
 
 	// GDI초기화
-	Gdiplus::GdiplusStartup(&gdiplusToken, &gdiInput, NULL);
+	GdiplusStartup(&gdiplusToken, &gdiInput, NULL);
 
 	// 이미지 로드
 	Kid::image = new Gdiplus::Image(L"sprites/kid.png");
 	Kid::imageLeft = new Gdiplus::Image(L"sprites/kid.png");
 	Kid::imageLeft->RotateFlip(Gdiplus::RotateNoneFlipX);
 	Block::image = new Gdiplus::Image(L"sprites/block.png");
-
+	
 	// DC, memory DC 생성
-	mainWindowDC = GetDC(mainWindow);
-	mainWindowInnerDC = CreateCompatibleDC(NULL);
-	mainWindowInnerBitmap = CreateCompatibleBitmap(mainWindowDC, mainWindowRect.right, mainWindowRect.bottom);
-	mainWindowInnerBitmapOld = (HBITMAP)SelectObject(mainWindowInnerDC, mainWindowInnerBitmap);
+	mainWindowGraphics = new Graphics(mainWindow);
+
+	mainWindowInnerBitmap = new Bitmap(mainWindowRect.GetRight() - mainWindowRect.GetLeft(), mainWindowRect.GetBottom() - mainWindowRect.GetTop());
+	mainWindowInnerGraphics = new Graphics(mainWindowInnerBitmap);
+	mainWindowCachedBitmap = new CachedBitmap(mainWindowInnerBitmap, mainWindowGraphics);
+
+	// brush
+	whiteBrush = new Gdiplus::SolidBrush(Gdiplus::Color(255, 255, 255, 255));
+	blackBrush = new Gdiplus::SolidBrush(Gdiplus::Color(255, 0, 0, 0));
 
 }
 
@@ -216,10 +232,14 @@ void destroyObject() {
 	delete Kid::imageLeft;
 	delete Block::image;
 	Gdiplus::GdiplusShutdown(gdiplusToken);
-	SelectObject(mainWindowInnerDC, mainWindowInnerBitmapOld);
-	DeleteObject(mainWindowInnerBitmap);
-	DeleteDC(mainWindowInnerDC);
-	ReleaseDC(mainWindow, mainWindowDC);
+
+	delete mainWindowGraphics;
+	delete mainWindowInnerBitmap;
+	delete mainWindowInnerGraphics;
+	delete mainWindowCachedBitmap;
+
+	delete whiteBrush;
+	delete blackBrush;
 
 }
 
@@ -258,12 +278,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 	break;
 	case WM_PAINT:
 	{
+		
 		PAINTSTRUCT ps;
 		HDC hdc = BeginPaint(hWnd, &ps);
 
-		BitBlt(hdc, 0, 0, mainWindowWidth, mainWindowHeight, mainWindowInnerDC, 0, 0, SRCCOPY);
+		Graphics g(hdc);
+		g.DrawImage(mainWindowInnerBitmap, 0, 0);
+		//g.DrawCachedBitmap(mainWindowCachedBitmap, 0, 0);
 
 		EndPaint(hWnd, &ps);
+		
 	}
 	break;
 	case WM_DESTROY:
