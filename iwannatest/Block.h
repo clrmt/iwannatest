@@ -10,5 +10,6 @@ public:
 	static Gdiplus::Image* image;
 	const static int imageWidth = 32;
 	const static int imageHeight = 32;
+	static Gdiplus::CachedBitmap* cachedBitmap;
 };
 

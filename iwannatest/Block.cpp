@@ -4,3 +4,4 @@
 #pragma comment(lib, "gdiplus")
 
 Gdiplus::Image* Block::image;
+Gdiplus::CachedBitmap* Block::cachedBitmap;

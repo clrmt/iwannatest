@@ -1,9 +1,15 @@
+#include <iostream>
 #include "Kid.h"
 #include "InputData.h"
 #include <ObjIdl.h>
 #include <gdiplus.h>
 #include "EntityManager.h"
 #pragma comment(lib, "gdiplus")
+
+const int Kid::imageFrameMax[6 + 1] = { 5, 3, 4, 4, 4, 4 };
+const int Kid::imageNumberMax[6 + 1] = { 4, 6, 2, 2, 2, 2 };
+Gdiplus::CachedBitmap* Kid::cachedBitmap[6][6] = { 0, };
+Gdiplus::CachedBitmap* Kid::cachedBitmapLeft[6][6] = { 0, };
 
 YX Kid::getCenterPosition() {
 	return { y + 20.0f, x + 16.0f };
@@ -19,11 +25,15 @@ bool Kid::isCollideWithBlock(float dx, float dy) {
 	
 	for (int yi = -10; yi <= 10; yi++) {
 		for (int xi = -5; xi <= 5; xi++) {
-			if (EntityManager::blockPixel[(int)(pos.y + (float)yi + dy)][(int)(pos.x + (float)xi + dx)] > 0) {
+			Color color;
+			EntityManager::blockBitmap->GetPixel((int)(pos.x + (float)xi + dx), (int)(pos.y + (float)yi + dy), &color);
+			if (color.GetR() < 255 || color.GetG() < 255 || color.GetB() < 255) {
 				return true;
 			}
 		}
 	}
+
+	
 	
 	return false;
 	
@@ -38,13 +48,7 @@ bool Kid::isCollideWithKiller() {
 		return true;
 	}
 
-	for (int yi = -5; yi <= 5; yi++) {
-		for (int xi = -10; xi <= 10; xi++) {
-			if (EntityManager::killerPixel[(int)(pos.y + (float)yi)][(int)(pos.x + (float)xi)] > 0) {
-				return true;
-			}
-		}
-	}
+	// ¿©±â¿¡ 
 
 	return false;
 

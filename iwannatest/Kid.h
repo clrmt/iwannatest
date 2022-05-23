@@ -16,12 +16,12 @@ public:
 	float ySpeed = 0.0f;
 	int state = 0;
 
-	void enterFrame(InputData &inputData);
+	void enterFrame(InputData& inputData);
 	bool isCollideWithBlock(float dx, float dy);
 	bool isCollideWithKiller();
 	YX getCenterPosition();
 	YX getDisplayPosition();
-	
+
 	static Gdiplus::Image* image;
 	static Gdiplus::Image* imageLeft;
 	const static int imageWidth = 32;
@@ -32,6 +32,9 @@ public:
 	const static int _KidState_Jumping = 3;
 	const static int _KidState_Falling = 4;
 	const static int _KidState_Vine = 5;
-	int imageFrameMax[10] = {5, 3, 4, 4, 4, 4, 4, 4, 4, 4};
-	int imageNumberMax[10] = {4, 6, 2, 2, 2, 2, 0, 0, 0, 0};
+
+	const static int imageFrameMax[6 + 1];
+	const static int imageNumberMax[6 + 1];
+	static Gdiplus::CachedBitmap* cachedBitmap[6][6];
+	static Gdiplus::CachedBitmap* cachedBitmapLeft[6][6];
 };

@@ -2,6 +2,7 @@
 #include <vector>
 #include "Kid.h"
 #include "Block.h"
+#include "Killer.h"
 #include "InputData.h"
 #include <ObjIdl.h>
 #include <gdiplus.h>
@@ -13,15 +14,20 @@ class EntityManager {
 public:
 	std::vector<Kid> kid;
 	std::vector<Block> block;
+	std::vector<Killer> killer;
 
-	static char blockPixel[(1 + 19 + 1) * 32][(1 + 25 + 1) * 32];
-	static char killerPixel[(1 + 19 + 1) * 32][(1 + 25 + 1) * 32];
+	static Bitmap* blockBitmap;
+	Gdiplus::Graphics* blockGraphics;
+
+	static Bitmap* killerBitmap;
+	Gdiplus::Graphics* killerGraphics;
 
 	Graphics *graphics;
-	CachedBitmap *cachedBitmap;
-	SolidBrush *backgroundBrush;
+	Gdiplus::SolidBrush *backgroundBrush;
+
+
 	
-	void init(Graphics *graphics_, CachedBitmap *cachedBitmap_);
+	void init(Gdiplus::Graphics *graphics_);
 	void setPreference(Gdiplus::Color &backgroundColor);
 	void destroy();
 	void destroyPreference();
@@ -29,9 +35,12 @@ public:
 	~EntityManager();
 	void enterFrame(InputData &inputData);
 	void draw();
+	void drawCollision();
 	void createKid(float y, float x);
 	void createBlock(float y, float x);
 	void createKid(Kid &c);
 	void createBlock(Block &c);
+
+
 };
 

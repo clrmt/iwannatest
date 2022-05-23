@@ -1,4 +1,5 @@
 #pragma once
+#include <iostream>
 #include "EntityManager.h"
 #include "InputData.h"
 #include "Kid.h"
@@ -8,30 +9,47 @@
 #pragma comment(lib, "gdiplus")
 using namespace Gdiplus;
 
-char EntityManager::blockPixel[(1 + 19 + 1) * 32][(1 + 25 + 1) * 32];
-char EntityManager::killerPixel[(1 + 19 + 1) * 32][(1 + 25 + 1) * 32];
+Bitmap* EntityManager::blockBitmap;
+Bitmap* EntityManager::killerBitmap;
 
 EntityManager::EntityManager() {
 	graphics = NULL;
-	cachedBitmap = NULL;
 	backgroundBrush = NULL;
+	blockBitmap = NULL;
+	blockGraphics = NULL;
+	killerBitmap = NULL;
+	killerGraphics = NULL;
 }
 EntityManager::~EntityManager() {
 	destroy();
 	destroyPreference();
+	delete blockBitmap;
+	delete blockGraphics;
+	delete killerBitmap;
+	delete killerGraphics;
 }
-void EntityManager::init(Graphics *graphics_, CachedBitmap *cachedBitmap_) {
+void EntityManager::init(Gdiplus::Graphics *graphics_) {
 	destroy();
 	graphics = graphics_;
-	cachedBitmap = cachedBitmap_;
+
+	extern Rect mainWindowRect;
+	blockBitmap = new Bitmap(mainWindowRect.GetRight() - mainWindowRect.GetLeft(), mainWindowRect.GetBottom() - mainWindowRect.GetTop());
+	blockGraphics = new Gdiplus::Graphics(blockBitmap);
+	killerBitmap = new Bitmap(mainWindowRect.GetRight() - mainWindowRect.GetLeft(), mainWindowRect.GetBottom() - mainWindowRect.GetTop());
+	killerGraphics = new Gdiplus::Graphics(killerBitmap);
 }
 void EntityManager::destroy() {
-
+	if (blockBitmap != NULL) {
+		delete blockBitmap;
+		delete blockGraphics;
+		delete killerBitmap;
+		delete killerGraphics;
+	}
 }
 // 환경 설정
-void EntityManager::setPreference(Gdiplus::Color &backgroundColor){
+void EntityManager::setPreference(Color &backgroundColor){
 	destroyPreference();
-	backgroundBrush = new Gdiplus::SolidBrush(backgroundColor);
+	backgroundBrush = new SolidBrush(backgroundColor);
 }
 void EntityManager::destroyPreference() {
 	if (backgroundBrush != NULL) {
@@ -52,43 +70,35 @@ void EntityManager::enterFrame(InputData& inputData) {
 
 void EntityManager::draw() {
 	
-	extern Gdiplus::SolidBrush *blackBrush;
-	extern Gdiplus::SolidBrush *whiteBrush;
+	extern SolidBrush *blackBrush;
+	extern SolidBrush *whiteBrush;
 	extern Rect mainWindowRect;
 	// 배경
 	graphics->FillRectangle(backgroundBrush, mainWindowRect.GetLeft(), mainWindowRect.GetTop(), mainWindowRect.GetRight() - mainWindowRect.GetLeft(), mainWindowRect.GetBottom() - mainWindowRect.GetTop());
-	
+	killerGraphics->FillRectangle(backgroundBrush, mainWindowRect.GetLeft(), mainWindowRect.GetTop(), mainWindowRect.GetRight() - mainWindowRect.GetLeft(), mainWindowRect.GetBottom() - mainWindowRect.GetTop());
+	blockGraphics->FillRectangle(backgroundBrush, mainWindowRect.GetLeft(), mainWindowRect.GetTop(), mainWindowRect.GetRight() - mainWindowRect.GetLeft(), mainWindowRect.GetBottom() - mainWindowRect.GetTop());
+
 	for (auto& c : block) {
-		graphics->DrawImage(Block::image,
-			(INT)c.x,
-			(INT)c.y,
-			c.imageNumber * c.imageWidth,
-			c.imageState * c.imageHeight,
-			c.imageWidth,
-			c.imageHeight,
-			Gdiplus::UnitPixel);
+		graphics->DrawCachedBitmap(Block::cachedBitmap, c.x, c.y);
+		blockGraphics->DrawCachedBitmap(Block::cachedBitmap, c.x, c.y);
 	}
 	for (auto& c : kid) {
 		if (c.left) {
-			graphics->DrawImage(Kid::imageLeft,
-				(INT)c.x + 2,
-				(INT)c.y,
-				c.image->GetWidth() - ((c.imageNumber + 1) * c.imageWidth),
-				c.imageState * c.imageHeight,
-				c.imageWidth,
-				c.imageHeight,
-				Gdiplus::UnitPixel);
+			graphics->DrawCachedBitmap(Kid::cachedBitmapLeft[c.imageState][c.imageNumber], c.x + 2, c.y);
 		} else {
-			graphics->DrawImage(Kid::image,
-				(INT)c.x - 2,
-				(INT)c.y,
-				c.imageNumber * c.imageWidth,
-				c.imageState * c.imageHeight,
-				c.imageWidth,
-				c.imageHeight,
-				Gdiplus::UnitPixel);
+			graphics->DrawCachedBitmap(Kid::cachedBitmap[c.imageState][c.imageNumber], c.x - 2, c.y);
 		}
 	}
+}
+
+void EntityManager::drawCollision() {
+
+	extern SolidBrush *whiteBrush;
+	extern SolidBrush *blackBrush;
+	extern Rect mainWindowRect;
+
+	killerGraphics->FillRectangle(whiteBrush, mainWindowRect.GetLeft(), mainWindowRect.GetTop(), mainWindowRect.GetRight() - mainWindowRect.GetLeft(), mainWindowRect.GetBottom() - mainWindowRect.GetTop());
+	blockGraphics->FillRectangle(blackBrush, mainWindowRect.GetLeft(), mainWindowRect.GetTop(), mainWindowRect.GetRight() - mainWindowRect.GetLeft(), mainWindowRect.GetBottom() - mainWindowRect.GetTop());
 }
 
 void EntityManager::createKid(float y = 0.0f, float x = 0.0f) {
@@ -103,12 +113,6 @@ void EntityManager::createBlock(float y = 0.0f, float x = 0.0f) {
 	cBlock.x = x;
 	cBlock.y = y;
 	this->block.push_back(cBlock);
-	for (long long yi = 0; yi < 32; yi++) {
-		for (long long xi = 0; xi < 32; xi++) {
-			this->blockPixel[(int)y + yi][(int)x + xi]++;
-		}
-	}
-
 }
 
 void EntityManager::createKid(Kid& c) {

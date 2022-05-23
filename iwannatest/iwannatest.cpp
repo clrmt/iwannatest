@@ -26,7 +26,6 @@ Graphics* mainWindowGraphics;
 
 Bitmap* mainWindowInnerBitmap;
 Graphics* mainWindowInnerGraphics;
-CachedBitmap* mainWindowCachedBitmap;
 
 constexpr int mainWindowWidth = 32 * 25;
 constexpr int mainWindowHeight = 32 * 19;
@@ -106,10 +105,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 					}
 				}
 			}
+			
 		} else {
 			// 시간이 너무 많이 남은 경우 나중에 다시 확인해봄
 			MsgWaitForMultipleObjects(0, NULL, FALSE, (DWORD)waitTime - (DWORD)readySecond, QS_ALLEVENTS);
-			//drawFrame();
 		}
 
 	}
@@ -173,7 +172,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
 
 	allocateObject();
 
-	entities.init(mainWindowInnerGraphics, mainWindowCachedBitmap);
+	entities.init(mainWindowInnerGraphics);
 	Color backgroundColor(255, 255, 255, 255);
 	entities.setPreference(backgroundColor);
 
@@ -184,6 +183,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
 	UpdateWindow(mainWindow); // 강제 WM_PAINT 실행
 
 	// 레벨 초기화
+	
 	entities.createBlock(0.f, 0.f);
 
 	entities.createBlock(332.f, 304.f);
@@ -198,6 +198,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
 	entities.createBlock(332.f, 432.f);
 	entities.createBlock(332.f, 464.f);
 	entities.createBlock(332.f, 496.f);
+	entities.drawCollision();
 
 	return TRUE;
 }
@@ -215,14 +216,34 @@ void allocateObject() {
 	
 	// DC, memory DC 생성
 	mainWindowGraphics = new Graphics(mainWindow);
-
 	mainWindowInnerBitmap = new Bitmap(mainWindowRect.GetRight() - mainWindowRect.GetLeft(), mainWindowRect.GetBottom() - mainWindowRect.GetTop());
 	mainWindowInnerGraphics = new Graphics(mainWindowInnerBitmap);
-	mainWindowCachedBitmap = new CachedBitmap(mainWindowInnerBitmap, mainWindowGraphics);
 
 	// brush
 	whiteBrush = new Gdiplus::SolidBrush(Gdiplus::Color(255, 255, 255, 255));
 	blackBrush = new Gdiplus::SolidBrush(Gdiplus::Color(255, 0, 0, 0));
+
+	// image to cached bitmap
+	for (int i = 0; i < 6; i++) {
+		for (int j = 0; j < Kid::imageNumberMax[i]; j++) {
+			Bitmap _bit(Kid::imageWidth, Kid::imageHeight);
+			Graphics _graphics(&_bit);
+			_graphics.DrawImage(Kid::image, 0, 0, j * Kid::imageWidth, i * Kid::imageHeight, Kid::imageWidth, Kid::imageHeight, UnitPixel);
+			Kid::cachedBitmap[i][j] = new CachedBitmap(&_bit, mainWindowInnerGraphics);
+
+			Bitmap _bitLeft(Kid::imageWidth, Kid::imageHeight);
+			Graphics _graphicsLeft(&_bitLeft);
+			_graphicsLeft.DrawImage(Kid::imageLeft, 0, 0, Kid::imageLeft->GetWidth() - ((j + 1) * Kid::imageWidth), i * Kid::imageHeight, Kid::imageWidth, Kid::imageHeight, UnitPixel);
+			Kid::cachedBitmapLeft[i][j] = new CachedBitmap(&_bitLeft, mainWindowInnerGraphics);
+		}
+	}
+
+	{
+		Bitmap _bit(Block::imageWidth, Block::imageHeight);
+		Graphics _graphics(&_bit);
+		_graphics.DrawImage(Block::image, 0, 0, 0, 0, Block::imageWidth, Block::imageHeight, UnitPixel);
+		Block::cachedBitmap = new CachedBitmap(&_bit, mainWindowInnerGraphics);
+	}
 
 }
 
@@ -236,11 +257,16 @@ void destroyObject() {
 	delete mainWindowGraphics;
 	delete mainWindowInnerBitmap;
 	delete mainWindowInnerGraphics;
-	delete mainWindowCachedBitmap;
 
 	delete whiteBrush;
 	delete blackBrush;
-
+	for (int i = 0; i < 6; i++) {
+		for (int j = 0; j < Kid::imageNumberMax[i]; j++) {
+			delete Kid::cachedBitmap[i][j];
+			delete Kid::cachedBitmapLeft[i][j];
+		}
+	}
+	delete Block::cachedBitmap;
 }
 
 void enterFrame() {
@@ -282,9 +308,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		PAINTSTRUCT ps;
 		HDC hdc = BeginPaint(hWnd, &ps);
 
-		Graphics g(hdc);
-		g.DrawImage(mainWindowInnerBitmap, 0, 0);
-		//g.DrawCachedBitmap(mainWindowCachedBitmap, 0, 0);
+		mainWindowGraphics->DrawImage(mainWindowInnerBitmap, 0, 0);
 
 		EndPaint(hWnd, &ps);
 		
