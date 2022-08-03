@@ -40,7 +40,7 @@ public:
 	void createBlock(float y, float x);
 	void createKid(Kid &c);
 	void createBlock(Block &c);
-
+	void createKiller(float y, float x);
 
 };
 

@@ -1,15 +1,10 @@
-#include <iostream>
 #include "Kid.h"
 #include "InputData.h"
+#include "SpriteManager.h"
 #include <ObjIdl.h>
 #include <gdiplus.h>
 #include "EntityManager.h"
 #pragma comment(lib, "gdiplus")
-
-const int Kid::imageFrameMax[6 + 1] = { 5, 3, 4, 4, 4, 4 };
-const int Kid::imageNumberMax[6 + 1] = { 4, 6, 2, 2, 2, 2 };
-Gdiplus::CachedBitmap* Kid::cachedBitmap[6][6] = { 0, };
-Gdiplus::CachedBitmap* Kid::cachedBitmapLeft[6][6] = { 0, };
 
 YX Kid::getCenterPosition() {
 	return { y + 20.0f, x + 16.0f };
@@ -66,12 +61,11 @@ void Kid::enterFrame(InputData &inputData) {
 
 		ySpeed += 0.4f;
 
-		if (inputData.key[inputData._keyCode_jump]) {
-			inputData.key[inputData._keyCode_jump] = 0;
+		if (inputData.isKeyDown(inputData._keyCode_jump)) {
 			if (land == 1) {
 				jumpStartFrame = 0;
 				land = 0;
-				ySpeed = -8.0f;
+				ySpeed = -8.5f;
 			} else {
 				if (jumpLeft > 0) {
 					jumpLeft--;
@@ -80,7 +74,7 @@ void Kid::enterFrame(InputData &inputData) {
 			}
 		}
 
-		if (ySpeed < 0.0f && inputData.keyUp[inputData._keyCode_jump]) {
+		if (ySpeed < 0.0f && inputData.isKeyUp(inputData._keyCode_jump)) {
 			ySpeed *= 0.45f;
 		}
 
@@ -115,7 +109,7 @@ void Kid::enterFrame(InputData &inputData) {
 		
 	}
 
-	if (inputData.key[inputData._keyCode_right]) {
+	if (inputData.isKeyDown(inputData._keyCode_right)) {
 		for (int i = 0; i < 3; i++) {
 			if (!isCollideWithBlock(1.0f, 0.0f)) {
 				x += 1.0f;
@@ -124,7 +118,7 @@ void Kid::enterFrame(InputData &inputData) {
 			}
 		}
 		left = false;
-	} else if (inputData.key[inputData._keyCode_left]) {
+	} else if (inputData.isKeyDown(inputData._keyCode_left)) {
 		for (int i = 0; i < 3; i++) {
 			if (!isCollideWithBlock(-1.0f, 0.0f)) {
 				x += -1.0f;
@@ -137,9 +131,9 @@ void Kid::enterFrame(InputData &inputData) {
 
 	int nextState;
 	if (land) {
-		if (inputData.key[inputData._keyCode_right]) {
+		if (inputData.isKeyDown(inputData._keyCode_right)) {
 			nextState = _KidState_Walking;
-		} else if (inputData.key[inputData._keyCode_left]) {
+		} else if (inputData.isKeyDown(inputData._keyCode_left)) {
 			nextState = -_KidState_Walking;
 		} else {
 			nextState = _KidState_Idle;
@@ -157,12 +151,14 @@ void Kid::enterFrame(InputData &inputData) {
 		}
 	}
 
+	extern SpriteManager sprite;
+
 	// 자동으로 이미지를 다음 프레임으로 조정
 	imageFrame++;
-	if (imageFrame >= imageFrameMax[imageState]) {
+	if (imageFrame >= sprite.kid.frame[imageState]) {
 		imageFrame = 0;
 		imageNumber++;
-		if (imageNumber >= imageNumberMax[imageState]) {
+		if (imageNumber >= sprite.kid.number[imageState]) {
 			imageNumber = 0;
 		}
 	}
@@ -176,5 +172,3 @@ void Kid::enterFrame(InputData &inputData) {
 	}
 
 }
-Gdiplus::Image* Kid::image;
-Gdiplus::Image* Kid::imageLeft;

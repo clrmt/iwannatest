@@ -1,8 +1,9 @@
 ﻿#define CONSOLE
-
 #pragma warning(disable:4996)
+#include <tuple>
 #include <iostream>
 #include <clocale>
+#include "SpriteManager.h"
 #include "framework.h"
 #include "iwannatest.h"
 #include "InputData.h"
@@ -30,6 +31,7 @@ Graphics* mainWindowInnerGraphics;
 constexpr int mainWindowWidth = 32 * 25;
 constexpr int mainWindowHeight = 32 * 19;
 
+SpriteManager sprite;
 EntityManager entities;
 InputData inputData;
 
@@ -62,8 +64,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
 
-
-
 	LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
 	LoadStringW(hInstance, IDC_IWANNATEST, szWindowClass, MAX_LOADSTRING);
 	MyRegisterClass(hInstance);
@@ -91,7 +91,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 		if (currentTick < nextFrameTime) {
 			waitTime = nextFrameTime - currentTick;
 		}
-		
+
 		if (waitTime <= readySecond) {
 			// 시간이 조금 남은 경우, 무한사이클을 돌리면서 적절한 시간이 되었나 확인
 			if (waitTime == 0) {
@@ -105,7 +105,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 					}
 				}
 			}
-			
+
 		} else {
 			// 시간이 너무 많이 남은 경우 나중에 다시 확인해봄
 			MsgWaitForMultipleObjects(0, NULL, FALSE, (DWORD)waitTime - (DWORD)readySecond, QS_ALLEVENTS);
@@ -146,15 +146,15 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
 	// 디버깅용ㅇㅇ요용ㅇ 콘솔
 #ifdef CONSOLE
 	AllocConsole();
-	_tfreopen(_T("CONOUT$"), _T("w"), stdout);
-	_tfreopen(_T("CONIN$"), _T("r"), stdin);
-	_tfreopen(_T("CONERR$"), _T("w"), stderr);
+	std::ignore = _tfreopen(_T("CONOUT$"), _T("w"), stdout);
+	std::ignore = _tfreopen(_T("CONIN$"), _T("r"), stdin);
+	std::ignore = _tfreopen(_T("CONERR$"), _T("w"), stderr);
 	_tsetlocale(LC_ALL, _T(""));
 #endif
 
 	mainWindow = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
 		CW_USEDEFAULT, CW_USEDEFAULT, mainWindowWidth, mainWindowHeight, nullptr, nullptr, hInstance, nullptr);
-	
+
 	hInst = hInstance;
 
 	if (!mainWindow) {
@@ -178,12 +178,11 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
 
 	// 프레임 시간 초기화
 	nextFrameTime = GetTickCount64() + frameInterval;
-	
+
 	ShowWindow(mainWindow, nCmdShow); // 보이게
 	UpdateWindow(mainWindow); // 강제 WM_PAINT 실행
 
-	// 레벨 초기화
-	
+	// 레벨 초기화(나중에 옮기기)
 	entities.createBlock(0.f, 0.f);
 
 	entities.createBlock(332.f, 304.f);
@@ -207,13 +206,8 @@ void allocateObject() {
 
 	// GDI초기화
 	GdiplusStartup(&gdiplusToken, &gdiInput, NULL);
+	sprite.allocate();
 
-	// 이미지 로드
-	Kid::image = new Gdiplus::Image(L"sprites/kid.png");
-	Kid::imageLeft = new Gdiplus::Image(L"sprites/kid.png");
-	Kid::imageLeft->RotateFlip(Gdiplus::RotateNoneFlipX);
-	Block::image = new Gdiplus::Image(L"sprites/block.png");
-	
 	// DC, memory DC 생성
 	mainWindowGraphics = new Graphics(mainWindow);
 	mainWindowInnerBitmap = new Bitmap(mainWindowRect.GetRight() - mainWindowRect.GetLeft(), mainWindowRect.GetBottom() - mainWindowRect.GetTop());
@@ -223,36 +217,9 @@ void allocateObject() {
 	whiteBrush = new Gdiplus::SolidBrush(Gdiplus::Color(255, 255, 255, 255));
 	blackBrush = new Gdiplus::SolidBrush(Gdiplus::Color(255, 0, 0, 0));
 
-	// image to cached bitmap
-	for (int i = 0; i < 6; i++) {
-		for (int j = 0; j < Kid::imageNumberMax[i]; j++) {
-			Bitmap _bit(Kid::imageWidth, Kid::imageHeight);
-			Graphics _graphics(&_bit);
-			_graphics.DrawImage(Kid::image, 0, 0, j * Kid::imageWidth, i * Kid::imageHeight, Kid::imageWidth, Kid::imageHeight, UnitPixel);
-			Kid::cachedBitmap[i][j] = new CachedBitmap(&_bit, mainWindowInnerGraphics);
-
-			Bitmap _bitLeft(Kid::imageWidth, Kid::imageHeight);
-			Graphics _graphicsLeft(&_bitLeft);
-			_graphicsLeft.DrawImage(Kid::imageLeft, 0, 0, Kid::imageLeft->GetWidth() - ((j + 1) * Kid::imageWidth), i * Kid::imageHeight, Kid::imageWidth, Kid::imageHeight, UnitPixel);
-			Kid::cachedBitmapLeft[i][j] = new CachedBitmap(&_bitLeft, mainWindowInnerGraphics);
-		}
-	}
-
-	{
-		Bitmap _bit(Block::imageWidth, Block::imageHeight);
-		Graphics _graphics(&_bit);
-		_graphics.DrawImage(Block::image, 0, 0, 0, 0, Block::imageWidth, Block::imageHeight, UnitPixel);
-		Block::cachedBitmap = new CachedBitmap(&_bit, mainWindowInnerGraphics);
-	}
-
 }
 
 void destroyObject() {
-
-	delete Kid::image;
-	delete Kid::imageLeft;
-	delete Block::image;
-	Gdiplus::GdiplusShutdown(gdiplusToken);
 
 	delete mainWindowGraphics;
 	delete mainWindowInnerBitmap;
@@ -260,13 +227,9 @@ void destroyObject() {
 
 	delete whiteBrush;
 	delete blackBrush;
-	for (int i = 0; i < 6; i++) {
-		for (int j = 0; j < Kid::imageNumberMax[i]; j++) {
-			delete Kid::cachedBitmap[i][j];
-			delete Kid::cachedBitmapLeft[i][j];
-		}
-	}
-	delete Block::cachedBitmap;
+
+	Gdiplus::GdiplusShutdown(gdiplusToken);
+
 }
 
 void enterFrame() {
@@ -289,7 +252,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 	case WM_COMMAND:
 	{
 		int wmId = LOWORD(wParam);
-		
+
 		switch (wmId) {
 		case IDM_ABOUT:
 			DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
@@ -304,14 +267,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 	break;
 	case WM_PAINT:
 	{
-		
+
 		PAINTSTRUCT ps;
 		HDC hdc = BeginPaint(hWnd, &ps);
 
 		mainWindowGraphics->DrawImage(mainWindowInnerBitmap, 0, 0);
 
 		EndPaint(hWnd, &ps);
-		
+
 	}
 	break;
 	case WM_DESTROY:

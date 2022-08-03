@@ -1,8 +1,10 @@
 #pragma once
 #include <iostream>
+#include "SpriteManager.h"
 #include "EntityManager.h"
 #include "InputData.h"
 #include "Kid.h"
+#include "Killer.h"
 #include <Windows.h>
 #include <ObjIdl.h>
 #include <gdiplus.h>
@@ -78,15 +80,17 @@ void EntityManager::draw() {
 	killerGraphics->FillRectangle(backgroundBrush, mainWindowRect.GetLeft(), mainWindowRect.GetTop(), mainWindowRect.GetRight() - mainWindowRect.GetLeft(), mainWindowRect.GetBottom() - mainWindowRect.GetTop());
 	blockGraphics->FillRectangle(backgroundBrush, mainWindowRect.GetLeft(), mainWindowRect.GetTop(), mainWindowRect.GetRight() - mainWindowRect.GetLeft(), mainWindowRect.GetBottom() - mainWindowRect.GetTop());
 
+	extern SpriteManager sprite;
+
 	for (auto& c : block) {
-		graphics->DrawCachedBitmap(Block::cachedBitmap, c.x, c.y);
-		blockGraphics->DrawCachedBitmap(Block::cachedBitmap, c.x, c.y);
+		graphics->DrawCachedBitmap(sprite.block.bitmap[0][0], (INT)c.x, (INT)c.y);
+		blockGraphics->DrawCachedBitmap(sprite.block.bitmap[0][0], (INT)c.x, (INT)c.y);
 	}
 	for (auto& c : kid) {
 		if (c.left) {
-			graphics->DrawCachedBitmap(Kid::cachedBitmapLeft[c.imageState][c.imageNumber], c.x + 2, c.y);
+			graphics->DrawCachedBitmap(sprite.kid.bitmap[c.imageState + 6][c.imageNumber], (INT)c.x + 2, (INT)c.y);
 		} else {
-			graphics->DrawCachedBitmap(Kid::cachedBitmap[c.imageState][c.imageNumber], c.x - 2, c.y);
+			graphics->DrawCachedBitmap(sprite.kid.bitmap[c.imageState][c.imageNumber], (INT)c.x - 2, (INT)c.y);
 		}
 	}
 }
@@ -121,4 +125,11 @@ void EntityManager::createKid(Kid& c) {
 
 void EntityManager::createBlock(Block& c) {
 	this->block.push_back(c);
+}
+
+void EntityManager::createKiller(float y = 0.0f, float x = 0.0f) {
+	Killer cKiller;
+	cKiller.x = x;
+	cKiller.y = y;
+	this->killer.push_back(cKiller);
 }
